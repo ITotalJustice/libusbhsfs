@@ -11,7 +11,10 @@
 #include "usbhsfs_utils.h"
 #include "usbhsfs_manager.h"
 #include "usbhsfs_mount.h"
+
+#ifndef USBHSFS_SXOS_DISABLE
 #include "sxos/usbfs_dev.h"
+#endif
 
 #if defined(DEBUG) && defined(GPL_BUILD)
 #include "ntfs-3g/ntfs.h"
@@ -189,6 +192,7 @@ Result usbHsFsInitialize(u8 event_idx)
             sprintf(g_sxOSDevice.product_name, "USBHDD");
             sprintf(g_sxOSDevice.name, USBFS_MOUNT_NAME ":");
             #else
+            (void)usbfs_init;
             goto end;
             #endif
         }
@@ -214,7 +218,9 @@ end:
         /* Close usb:hs service if initialization failed. */
         if (R_FAILED(rc))
         {
+            #ifndef USBHSFS_SXOS_DISABLE
             if (usbfs_init) usbFsExit();
+            #endif
 
             if (usb_event_created) usbHsDestroyInterfaceAvailableEvent(&g_usbInterfaceAvailableEvent, event_idx);
 
