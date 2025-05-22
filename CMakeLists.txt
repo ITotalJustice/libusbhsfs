@@ -29,6 +29,7 @@ project(libusbhsfs
 )
 
 option(USBHSFS_GPL "ext4 and ntfs support" OFF)
+option(USBHSFS_SXOS_DISABLE "disable sxos support" OFF)
 option(USBHSFS_EXAMPLES "build examples" OFF)
 
 add_subdirectory(source)

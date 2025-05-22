@@ -22,10 +22,14 @@ target_sources(libusbhsfs PRIVATE
 )
 
 # sxos stuff
-target_sources(libusbhsfs PRIVATE
-    sxos/usbfs_dev.c
-    sxos/usbfs.c
-)
+if (USBHSFS_SXOS_DISABLE)
+    target_compile_definitions(libusbhsfs PRIVATE USBHSFS_SXOS_DISABLE)
+else ()
+    target_sources(libusbhsfs PRIVATE
+        sxos/usbfs_dev.c
+        sxos/usbfs.c
+    )
+endif()
 
 if (USBHSFS_GPL)
     target_sources(libusbhsfs PRIVATE

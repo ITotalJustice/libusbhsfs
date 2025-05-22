@@ -20,7 +20,7 @@ ROOTDIR			?=	$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BUILD_TIMESTAMP	:=	$(strip $(shell date --utc '+%Y-%m-%d %T UTC'))
 
 TARGET			:=	usbhsfs
-SOURCES			:=	source source/fatfs source/sxos
+SOURCES			:=	source source/fatfs
 DATA			:=	data
 INCLUDES		:=	include
 
@@ -62,6 +62,12 @@ ifeq ($(filter $(MAKECMDGOALS),clean dist-src),)
     else
         $(error BUILD_TYPE flag not set)
     endif
+endif
+
+ifeq ($(USBHSFS_SXOS_DISABLE),1)
+	CFLAGS	+=	-DUSBHSFS_SXOS_DISABLE
+else
+	SOURCES	+=	source/sxos
 endif
 
 #---------------------------------------------------------------------------------
