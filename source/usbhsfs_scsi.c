@@ -1164,6 +1164,11 @@ req_sense:
                 /* Update return flag if we dealt with an unexpected non-Phase-Error CSW and all meaningful data was transferred and processed. */
                 if (!ret && unexpected_csw && csw.bCSWStatus < ScsiCommandStatus_PhaseError && data_transferred >= data_size) ret = true;
 
+                if (!ret)
+                {
+                    USBHSFS_LOG_MSG("TJ: Forcfully setting ret=true so that sd->usb adapter works!!!");
+                    ret = true;
+                }
                 break;
             case ScsiSenseKey_NotReady:
                 /* Check if we're dealing with a medium not present. */
