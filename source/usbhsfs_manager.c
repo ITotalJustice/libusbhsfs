@@ -16,8 +16,10 @@
 #include "sxos/usbfs_dev.h"
 #endif
 
-#if defined(DEBUG) && defined(GPL_BUILD)
+#if defined(DEBUG) && defined(USBHSFS_NTFS)
 #include "ntfs-3g/ntfs.h"
+#endif
+#if defined(DEBUG) && defined(USBHSFS_EXT4)
 #include "lwext4/ext.h"
 #endif
 
@@ -85,28 +87,32 @@ Result usbHsFsInitialize(u8 event_idx)
         /* Log Horizon OS version. */
         u32 hos_version = hosversionGet();
         USBHSFS_LOG_MSG("Horizon OS version: %u.%u.%u.", HOSVER_MAJOR(hos_version), HOSVER_MINOR(hos_version), HOSVER_MICRO(hos_version));
-#ifdef GPL_BUILD
+#if defined(USBHSFS_NTFS) || defined(USBHSFS_EXT4)
         USBHSFS_LOG_MSG("Build type: GPL.");
 
+#ifdef USBHSFS_NTFS
         /* Setup NTFS-3G logging. */
         ntfs_log_set_handler(ntfs_log_handler_usbhsfs);
         ntfs_log_set_levels(NTFS_LOG_LEVEL_DEBUG | NTFS_LOG_LEVEL_TRACE | NTFS_LOG_LEVEL_QUIET | NTFS_LOG_LEVEL_INFO | NTFS_LOG_LEVEL_VERBOSE | NTFS_LOG_LEVEL_PROGRESS | NTFS_LOG_LEVEL_WARNING | \
                             NTFS_LOG_LEVEL_ERROR | NTFS_LOG_LEVEL_PERROR | NTFS_LOG_LEVEL_CRITICAL | NTFS_LOG_LEVEL_ENTER | NTFS_LOG_LEVEL_LEAVE);
-
+#endif
+#ifdef USBHSFS_EXT4
         /* Setup lwext4 logging. */
         ext4_dmask_set(DEBUG_ALL & ~DEBUG_NOPREFIX);
+#endif
 #else   /* GPL_BUILD */
         USBHSFS_LOG_MSG("Build type: ISC.");
 #endif  /* GPL_BUILD */
 #else   /* DEBUG */
-#ifdef GPL_BUILD
+#ifdef USBHSFS_NTFS
         /* Disable NTFS-3G logging. */
         ntfs_log_set_handler(ntfs_log_handler_null);
         ntfs_log_set_levels(0);
-
+#endif
+#ifdef USBHSFS_EXT4
         /* Disable lwext4 logging. */
         ext4_dmask_set(0);
-#endif  /* GPL_BUILD */
+#endif
 #endif  /* DEBUG */
 
         /* Check if the deprecated fsp-usb service is running. */
@@ -1167,10 +1173,12 @@ static void usbHsFsFillDeviceElement(UsbHsFsDriveContext *drive_ctx, UsbHsFsDriv
         case UsbHsFsDriveLogicalUnitFileSystemType_FAT:
             device->fs_type = fs_ctx->fatfs->fs_type;   /* FatFs type values correlate with our UsbHsFsDeviceFileSystemType enum. */
             break;
-#ifdef GPL_BUILD
+#ifdef USBHSFS_NTFS
         case UsbHsFsDriveLogicalUnitFileSystemType_NTFS:
             device->fs_type = UsbHsFsDeviceFileSystemType_NTFS;
             break;
+#endif
+#ifdef USBHSFS_EXT4
         case UsbHsFsDriveLogicalUnitFileSystemType_EXT:
             device->fs_type = fs_ctx->ext->version;
             break;

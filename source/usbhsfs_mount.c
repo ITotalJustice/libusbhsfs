@@ -14,8 +14,10 @@
 #include "usbhsfs_scsi.h"
 #include "fatfs/ff_dev.h"
 
-#ifdef GPL_BUILD
+#ifdef USBHSFS_NTFS
 #include "ntfs-3g/ntfs_dev.h"
+#endif
+#ifdef USBHSFS_EXT4
 #include "lwext4/ext_dev.h"
 #endif
 
@@ -203,8 +205,16 @@ static bool usbHsFsMountParseMasterBootRecord(UsbHsFsDriveLogicalUnitContext *lu
 static void usbHsFsMountParseMasterBootRecordPartitionEntry(UsbHsFsDriveLogicalUnitContext *lun_ctx, u8 *block, u8 type, u64 lba, u64 size, bool parse_ebr_gpt);
 
 static u8 usbHsFsMountInspectVolumeBootRecord(UsbHsFsDriveLogicalUnitContext *lun_ctx, u8 *block, u64 block_addr);
-#ifdef GPL_BUILD
+#ifdef USBHSFS_EXT4
 static u8 usbHsFsMountInspectExtSuperBlock(UsbHsFsDriveLogicalUnitContext *lun_ctx, u8 *block, u64 block_addr);
+#endif
+
+#if defined(USBHSFS_NTFS) || defined(USBHSFS_EXT4)
+#endif
+
+#ifdef USBHSFS_NTFS
+#endif
+#ifdef USBHSFS_EXT4
 #endif
 
 static void usbHsFsMountParseExtendedBootRecord(UsbHsFsDriveLogicalUnitContext *lun_ctx, u8 *block, u64 ebr_lba);
@@ -215,7 +225,7 @@ static bool usbHsFsMountRegisterVolume(UsbHsFsDriveLogicalUnitContext *lun_ctx, 
 static bool usbHsFsMountRegisterFatVolume(UsbHsFsDriveLogicalUnitFileSystemContext *fs_ctx, u8 *block, u64 block_addr);
 static void usbHsFsMountUnregisterFatVolume(char *name, UsbHsFsDriveLogicalUnitFileSystemContext *fs_ctx);
 
-#ifdef GPL_BUILD
+#if defined(USBHSFS_NTFS) || defined(USBHSFS_EXT4)
 static bool usbHsFsMountRegisterNtfsVolume(UsbHsFsDriveLogicalUnitFileSystemContext *fs_ctx, u8 *block, u64 block_addr);
 static void usbHsFsMountUnregisterNtfsVolume(UsbHsFsDriveLogicalUnitFileSystemContext *fs_ctx);
 
@@ -260,7 +270,7 @@ bool usbHsFsMountInitializeLogicalUnitFileSystemContexts(UsbHsFsDriveLogicalUnit
         /* Parse MBR. */
         ret = usbHsFsMountParseMasterBootRecord(lun_ctx, block);
     } else {
-#ifdef GPL_BUILD
+#ifdef USBHSFS_EXT4
         /* We may be dealing with an EXT volume at LBA 0. */
         fs_type = usbHsFsMountInspectExtSuperBlock(lun_ctx, block, 0);
         if (fs_type == UsbHsFsDriveLogicalUnitFileSystemType_EXT)
@@ -344,10 +354,12 @@ void usbHsFsMountDestroyLogicalUnitFileSystemContext(UsbHsFsDriveLogicalUnitFile
         case UsbHsFsDriveLogicalUnitFileSystemType_FAT:     /* FAT12/FAT16/FAT32/exFAT. */
             usbHsFsMountUnregisterFatVolume(name, fs_ctx);
             break;
-#ifdef GPL_BUILD
+#ifdef USBHSFS_NTFS
         case UsbHsFsDriveLogicalUnitFileSystemType_NTFS:    /* NTFS. */
             usbHsFsMountUnregisterNtfsVolume(fs_ctx);
             break;
+#endif
+#ifdef USBHSFS_EXT4
         case UsbHsFsDriveLogicalUnitFileSystemType_EXT:     /* EXT2/3/4. */
             usbHsFsMountUnregisterExtVolume(fs_ctx);
             break;
@@ -476,7 +488,7 @@ static void usbHsFsMountParseMasterBootRecordPartitionEntry(UsbHsFsDriveLogicalU
         case MasterBootRecordPartitionType_LinuxFileSystem:
             USBHSFS_LOG_MSG("Found Linux partition entry with type 0x%02X at LBA 0x%lX (interface %d, LUN %u).", type, lba, lun_ctx->usb_if_id, lun_ctx->lun);
 
-#ifdef GPL_BUILD
+#ifdef USBHSFS_EXT4
             /* Inspect EXT superblock. */
             fs_type = usbHsFsMountInspectExtSuperBlock(lun_ctx, block, lba);
 #endif
@@ -578,7 +590,7 @@ end:
     return ret;
 }
 
-#ifdef GPL_BUILD
+#ifdef USBHSFS_EXT4
 
 static u8 usbHsFsMountInspectExtSuperBlock(UsbHsFsDriveLogicalUnitContext *lun_ctx, u8 *block, u64 block_addr)
 {
@@ -755,7 +767,7 @@ static void usbHsFsMountParseGuidPartitionTable(UsbHsFsDriveLogicalUnitContext *
 
                 /* Inspect Microsoft VBR. Register the volume if we detect a supported VBR. */
                 fs_type = usbHsFsMountInspectVolumeBootRecord(lun_ctx, block, entry_lba);
-#ifdef GPL_BUILD
+#ifdef USBHSFS_EXT4
                 if (fs_type == UsbHsFsDriveLogicalUnitFileSystemType_Invalid)
                 {
                     /* We may be dealing with a EXT volume. Check if we can find a valid EXT superblock. */
@@ -769,7 +781,7 @@ static void usbHsFsMountParseGuidPartitionTable(UsbHsFsDriveLogicalUnitContext *
                 /* We're dealing with a Linux Filesystem Data entry. */
                 USBHSFS_LOG_MSG("Found Linux Filesystem Data entry at LBA 0x%lX (interface %d, LUN %u).", entry_lba, lun_ctx->usb_if_id, lun_ctx->lun);
 
-#ifdef GPL_BUILD
+#ifdef USBHSFS_EXT4
                 /* Check if this LBA points to a valid EXT superblock. Register the EXT volume if so. */
                 fs_type = usbHsFsMountInspectExtSuperBlock(lun_ctx, block, entry_lba);
 #endif
@@ -786,7 +798,7 @@ static void usbHsFsMountParseGuidPartitionTable(UsbHsFsDriveLogicalUnitContext *
 
 static bool usbHsFsMountRegisterVolume(UsbHsFsDriveLogicalUnitContext *lun_ctx, u8 *block, u64 block_addr, u64 block_count, u8 fs_type)
 {
-#ifndef GPL_BUILD
+#if !defined(USBHSFS_NTFS) && !defined(USBHSFS_EXT4)
     NX_IGNORE_ARG(block_count);
 #endif
 
@@ -828,10 +840,12 @@ static bool usbHsFsMountRegisterVolume(UsbHsFsDriveLogicalUnitContext *lun_ctx, 
         case UsbHsFsDriveLogicalUnitFileSystemType_FAT:     /* FAT12/FAT16/FAT32/exFAT. */
             ret = usbHsFsMountRegisterFatVolume(fs_ctx, block, block_addr);
             break;
-#ifdef GPL_BUILD
+#ifdef USBHSFS_NTFS
         case UsbHsFsDriveLogicalUnitFileSystemType_NTFS:    /* NTFS. */
             ret = usbHsFsMountRegisterNtfsVolume(fs_ctx, block, block_addr);
             break;
+#endif
+#ifdef USBHSFS_EXT4
         case UsbHsFsDriveLogicalUnitFileSystemType_EXT:     /* EXT2/3/4. */
             ret = usbHsFsMountRegisterExtVolume(fs_ctx, block_addr, block_count);
             break;
@@ -963,7 +977,7 @@ static void usbHsFsMountUnregisterFatVolume(char *name, UsbHsFsDriveLogicalUnitF
     fs_ctx->fatfs = NULL;
 }
 
-#ifdef GPL_BUILD
+#ifdef USBHSFS_NTFS
 
 static bool usbHsFsMountRegisterNtfsVolume(UsbHsFsDriveLogicalUnitFileSystemContext *fs_ctx, u8 *block, u64 block_addr)
 {
@@ -1095,7 +1109,9 @@ static void usbHsFsMountUnregisterNtfsVolume(UsbHsFsDriveLogicalUnitFileSystemCo
     free(fs_ctx->ntfs);
     fs_ctx->ntfs = NULL;
 }
+#endif /* USBHSFS_NTFS */
 
+#ifdef USBHSFS_EXT4
 static bool usbHsFsMountRegisterExtVolume(UsbHsFsDriveLogicalUnitFileSystemContext *fs_ctx, u64 block_addr, u64 block_count)
 {
     UsbHsFsDriveLogicalUnitContext *lun_ctx = (UsbHsFsDriveLogicalUnitContext*)fs_ctx->lun_ctx;
@@ -1173,7 +1189,7 @@ static void usbHsFsMountUnregisterExtVolume(UsbHsFsDriveLogicalUnitFileSystemCon
     fs_ctx->ext = NULL;
 }
 
-#endif  /* GPL_BUILD */
+#endif  /* USBHSFS_EXT4 */
 
 static bool usbHsFsMountRegisterDevoptabDevice(UsbHsFsDriveLogicalUnitFileSystemContext *fs_ctx)
 {
@@ -1225,10 +1241,12 @@ static bool usbHsFsMountRegisterDevoptabDevice(UsbHsFsDriveLogicalUnitFileSystem
         case UsbHsFsDriveLogicalUnitFileSystemType_FAT:     /* FAT12/FAT16/FAT32/exFAT. */
             fs_device = ffdev_get_devoptab();
             break;
-#ifdef GPL_BUILD
+#ifdef USBHSFS_NTFS
         case UsbHsFsDriveLogicalUnitFileSystemType_NTFS:    /* NTFS. */
             fs_device = ntfsdev_get_devoptab();
             break;
+#endif
+#ifdef USBHSFS_EXT4
         case UsbHsFsDriveLogicalUnitFileSystemType_EXT:     /* EXT2/3/4. */
             fs_device = extdev_get_devoptab();
             break;

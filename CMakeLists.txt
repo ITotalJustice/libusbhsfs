@@ -29,8 +29,15 @@ project(libusbhsfs
 )
 
 option(USBHSFS_GPL "ext4 and ntfs support" OFF)
+option(USBHSFS_NTFS "ntfs support" OFF)
+option(USBHSFS_EXT4 "ext4 support" OFF)
 option(USBHSFS_SXOS_DISABLE "disable sxos support" OFF)
 option(USBHSFS_EXAMPLES "build examples" OFF)
+
+if (USBHSFS_GPL)
+    set(USBHSFS_NTFS ON)
+    set(USBHSFS_EXT4 ON)
+endif()
 
 set(LIB_TITLE "usbhsfs")
 string(TIMESTAMP BUILD_TIMESTAMP "%Y-%m-%d %H:%M:%S" UTC)
@@ -71,12 +78,8 @@ else ()
     )
 endif()
 
-if (USBHSFS_GPL)
+if (USBHSFS_NTFS)
     target_sources(libusbhsfs PRIVATE
-        source/lwext4/ext_dev.c
-        source/lwext4/ext_disk_io.c
-        source/lwext4/ext.c
-
         source/ntfs-3g/ntfs_dev.c
         source/ntfs-3g/ntfs_disk_io.c
         source/ntfs-3g/ntfs.c
@@ -85,20 +88,32 @@ if (USBHSFS_GPL)
     find_library(ntfs_3g_lib ntfs-3g)
     find_path(ntfs_3g_inc ntfs-3g)
 
-    find_library(lwext4_lib lwext4)
-    find_path(lwext4_inc ext4.h)
-
     if (NOT ntfs_3g_lib OR NOT ntfs_3g_inc)
         message(FATAL_ERROR "ntfs-3g is not installed!")
     endif()
+
+    target_link_libraries(libusbhsfs PRIVATE ${ntfs_3g_lib})
+    target_include_directories(libusbhsfs PRIVATE ${ntfs_3g_inc})
+    target_compile_definitions(libusbhsfs PRIVATE USBHSFS_NTFS)
+endif()
+
+if (USBHSFS_EXT4)
+    target_sources(libusbhsfs PRIVATE
+        source/lwext4/ext_dev.c
+        source/lwext4/ext_disk_io.c
+        source/lwext4/ext.c
+    )
+
+    find_library(lwext4_lib lwext4)
+    find_path(lwext4_inc ext4.h)
 
     if (NOT lwext4_lib OR NOT lwext4_inc)
         message(FATAL_ERROR "lwext4 is not installed!")
     endif()
 
-    target_link_libraries(libusbhsfs PRIVATE ${ntfs_3g_lib} ${lwext4_lib})
-    target_include_directories(libusbhsfs PRIVATE ${ntfs_3g_inc} ${lwext4_inc})
-    target_compile_definitions(libusbhsfs PRIVATE GPL_BUILD)
+    target_link_libraries(libusbhsfs PRIVATE ${lwext4_lib})
+    target_include_directories(libusbhsfs PRIVATE ${lwext4_inc})
+    target_compile_definitions(libusbhsfs PRIVATE USBHSFS_EXT4)
 endif()
 
 if (USBHSFS_EXAMPLES)

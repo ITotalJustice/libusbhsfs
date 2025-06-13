@@ -16,8 +16,10 @@
 #include <sys/iosupport.h>
 #include "fatfs/ff.h"
 
-#ifdef GPL_BUILD
+#ifdef USBHSFS_NTFS
 #include "ntfs-3g/ntfs.h"
+#endif
+#ifdef USBHSFS_EXT4
 #include "lwext4/ext.h"
 #endif
 
@@ -37,8 +39,10 @@ typedef struct {
     u8 fs_type;         ///< UsbHsFsDriveLogicalUnitFileSystemType.
     u32 flags;          ///< UsbHsFsMountFlags bitmask used at mount time.
     FATFS *fatfs;       ///< Pointer to a dynamically allocated FatFs object. Only used if fs_type == UsbHsFsFileSystemType_FAT.
-#ifdef GPL_BUILD
+#ifdef USBHSFS_NTFS
     ntfs_vd *ntfs;      ///< Pointer to a dynamically allocated ntfs_vd object. Only used if fs_type == UsbHsFsFileSystemType_NTFS.
+#endif
+#ifdef USBHSFS_EXT4
     ext_vd *ext;        ///< Pointer to a dynamically allocated ext_vd object. Only used if fs_type == UsbHsFsFileSystemType_EXT.
 #endif
 
@@ -130,10 +134,12 @@ NX_INLINE bool usbHsFsDriveIsValidLogicalUnitFileSystemContext(UsbHsFsDriveLogic
             case UsbHsFsDriveLogicalUnitFileSystemType_FAT:
                 fs_valid = (fs_ctx->fatfs != NULL);
                 break;
-#ifdef GPL_BUILD
+#ifdef USBHSFS_NTFS
             case UsbHsFsDriveLogicalUnitFileSystemType_NTFS:
                 fs_valid = (fs_ctx->ntfs != NULL);
                 break;
+#endif
+#ifdef USBHSFS_EXT4
             case UsbHsFsDriveLogicalUnitFileSystemType_EXT:
                 fs_valid = (fs_ctx->ext != NULL);
                 break;
