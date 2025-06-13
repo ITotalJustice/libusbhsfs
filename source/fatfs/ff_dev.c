@@ -318,12 +318,25 @@ end:
 
 static int ffdev_fstat(struct _reent *r, void *fd, struct stat *st)
 {
-    NX_IGNORE_ARG(fd);
-    NX_IGNORE_ARG(st);
+    FILINFO info = {0};
 
-    /* Not supported by FatFs. */
-    r->_errno = ENOSYS;
-    return -1;
+    ff_declare_error_state;
+    ff_declare_file_state;
+    ff_lock_drive_ctx;
+
+    /* Sanity check. */
+    if (!file) ff_set_error_and_exit(EINVAL);
+
+    /* Only fill the attr and size field, leaving the timestamp blank. */
+    info.fattrib = file->obj.attr;
+    info.fsize = file->obj.objsize;
+
+    /* Fill stat info. */
+    ffdev_fill_stat(st, &info);
+
+end:
+    ff_unlock_drive_ctx;
+    ff_return(0);
 }
 
 static int ffdev_stat(struct _reent *r, const char *file, struct stat *st)
